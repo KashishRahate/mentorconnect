@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState } from "react";
 
 interface CalendarProps {
   onDateSelect: (date: string) => void;
@@ -15,13 +15,11 @@ const Calendar: React.FC<CalendarProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const getDaysInMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
+  const getDaysInMonth = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 
-  const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
+  const getFirstDayOfMonth = (date: Date) =>
+    new Date(date.getFullYear(), date.getMonth(), 1).getDay();
 
   const handlePrevMonth = () => {
     setCurrentDate(
@@ -41,7 +39,9 @@ const Calendar: React.FC<CalendarProps> = ({
       currentDate.getMonth(),
       day
     );
-    const dateString = selected.toISOString().split("T")[0];
+
+    // ✅ FIX: Generate date string in LOCAL time (not UTC)
+    const dateString = selected.toLocaleDateString("en-CA"); // gives YYYY-MM-DD
     onDateSelect(dateString);
   };
 
@@ -49,13 +49,8 @@ const Calendar: React.FC<CalendarProps> = ({
   const firstDay = getFirstDayOfMonth(currentDate);
   const days = [];
 
-  for (let i = 0; i < firstDay; i++) {
-    days.push(null);
-  }
-
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push(i);
-  }
+  for (let i = 0; i < firstDay; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
   const monthName = currentDate.toLocaleString("default", {
     month: "long",
@@ -93,17 +88,15 @@ const Calendar: React.FC<CalendarProps> = ({
 
       <div className="grid grid-cols-7 gap-2">
         {days.map((day, idx) => {
-          if (day === null) {
+          if (day === null)
             return <div key={`empty-${idx}`} className="aspect-square" />;
-          }
 
-          const dateString = new Date(
+          const localDate = new Date(
             currentDate.getFullYear(),
             currentDate.getMonth(),
             day
-          )
-            .toISOString()
-            .split("T")[0];
+          );
+          const dateString = localDate.toLocaleDateString("en-CA"); // ✅ fixed
           const isSelected = selectedDate === dateString;
           const isDisabled = minDate && dateString < minDate;
 
