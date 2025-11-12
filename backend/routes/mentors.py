@@ -237,41 +237,47 @@ mentors_bp = Blueprint('mentors', __name__)
 supabase = get_supabase_client()
 
 
-# ✅ Allow preflight OPTIONS requests globally for this blueprint
-@mentors_bp.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        response = jsonify({'message': 'CORS preflight OK'})
-        response.headers.add("Access-Control-Allow-Origin", "http://localhost:5173")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        return response
-
-
-# ✅ 1. Search mentors by expertise
 @mentors_bp.route('/search', methods=['GET', 'OPTIONS'])
 def search_mentors():
     try:
-        expertise = request.args.get('expertise')
-        if not expertise:
-            return jsonify({'error': 'Expertise parameter is required'}), 400
+        expertise = request.args.get('expertise', '').strip()
 
-        # Try direct ilike for text field match
+        # ✅ Case 1: No expertise provided → return all mentors
+        if not expertise:
+            response = supabase.table('mentor_profile').select('*, users:user_id(*)').execute()
+            mentors = response.data or []
+
+            if not mentors:
+                return jsonify({'message': 'No mentors available yet'}), 200
+
+            return jsonify(mentors), 200
+
+        # ✅ Case 2: Search by expertise (text or text[])
         try:
-            response = supabase.table('mentor_profile').select('*').ilike('expertise', f'%{expertise}%').execute()
+            response = (
+                supabase.table('mentor_profile')
+                .select('*, users:user_id(*)')
+                .ilike('expertise', f'%{expertise}%')
+                .execute()
+            )
             mentors = response.data
         except Exception:
-            # Handle expertise stored as text[]
-            response = supabase.table('mentor_profile').select('*').execute()
-            mentors = [m for m in response.data if any(expertise.lower() in e.lower() for e in m.get('expertise', []))]
+            # fallback for text[] column case
+            response = supabase.table('mentor_profile').select('*, users:user_id(*)').execute()
+            mentors = [
+                m for m in response.data
+                if any(expertise.lower() in e.lower() for e in (m.get('expertise') or []))
+            ]
 
         if not mentors:
-            return jsonify({'message': f'No mentors found with expertise "{expertise}"'}), 404
+            return jsonify({'message': f'No mentors found with expertise "{expertise}"'}), 200
 
         return jsonify(mentors), 200
 
     except Exception as e:
+        print("Error in /search:", e)
         return jsonify({'error': str(e)}), 500
+
 
 
 # ✅ 2. Get current logged-in mentor profile
