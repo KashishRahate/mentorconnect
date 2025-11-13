@@ -385,13 +385,12 @@
 // };
 
 // export default MentorProfile;
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import md5 from "md5"; // ✅ For generating Gravatar hash
+import md5 from "md5";
 
 interface MentorData {
   user_id: string;
@@ -414,6 +413,10 @@ interface Review {
   rating: number;
   feedback: string;
   mentee_id: string;
+  mentee_name?: string;
+  mentee_email?: string;
+  mentee_pic?: string;
+  created_at?: string;
 }
 
 const MentorProfile: React.FC = () => {
@@ -443,7 +446,6 @@ const MentorProfile: React.FC = () => {
         return;
       }
 
-      // Normalize to prevent undefined access
       const safeMentor: MentorData = {
         ...mentorData,
         users: mentorData.users || {
@@ -462,12 +464,22 @@ const MentorProfile: React.FC = () => {
 
       setMentor(safeMentor);
 
-      // Fetch reviews only after mentor is confirmed valid
+      // Fetch reviews with mentee info
       const reviewsRes = await fetch(
         `http://localhost:5000/api/reviews/mentor/${id}`
       );
       const reviewsData = await reviewsRes.json();
-      setReviews(Array.isArray(reviewsData) ? reviewsData : []);
+
+      const parsedReviews: Review[] = Array.isArray(reviewsData)
+        ? reviewsData.map((r: any) => ({
+            ...r,
+            mentee_name: r.users?.name || "Anonymous",
+            mentee_email: r.users?.email,
+            mentee_pic: r.users?.profile_pic_url,
+          }))
+        : [];
+
+      setReviews(parsedReviews);
     } catch (err) {
       console.error("Failed to fetch mentor data:", err);
       setError("Something went wrong while fetching mentor data.");
@@ -476,7 +488,6 @@ const MentorProfile: React.FC = () => {
     }
   };
 
-  // ✅ Generate avatar URL (Gravatar fallback)
   const getAvatarUrl = (profilePicUrl?: string, email?: string) => {
     if (profilePicUrl) return profilePicUrl;
     const hash = email
@@ -485,7 +496,15 @@ const MentorProfile: React.FC = () => {
     return `https://www.gravatar.com/avatar/${hash}?d=identicon&size=200`;
   };
 
-  // UI States
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   if (loading) return <div className="text-center py-12">Loading...</div>;
   if (error)
     return <div className="text-center py-12 text-red-500">{error}</div>;
@@ -499,7 +518,6 @@ const MentorProfile: React.FC = () => {
         {/* Profile Header */}
         <div className="bg-white rounded-lg shadow p-8 mb-8">
           <div className="flex flex-col md:flex-row gap-8 mb-8">
-            {/* ✅ Avatar with Gravatar Fallback */}
             <img
               src={getAvatarUrl(userInfo.profile_pic_url, userInfo.email)}
               alt={userInfo.name || "Unknown"}
@@ -551,6 +569,7 @@ const MentorProfile: React.FC = () => {
             </div>
           </div>
 
+          {/* Stats */}
           <div className="grid md:grid-cols-3 gap-6 border-t pt-8">
             <div>
               <p className="text-gray-600 text-sm">Experience</p>
@@ -596,14 +615,46 @@ const MentorProfile: React.FC = () => {
           {reviews.length === 0 ? (
             <p className="text-gray-600">No reviews yet</p>
           ) : (
-            <div className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
               {reviews.map((review) => (
-                <div key={review.id} className="border-b pb-6 last:border-b-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-yellow-500">★</span>
-                    <span className="font-semibold">{review.rating}/5</span>
+                <div
+                  key={review.id}
+                  className="border border-gray-100 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-center mb-4">
+                    <img
+                      src={getAvatarUrl(review.mentee_pic, review.mentee_email)}
+                      alt={review.mentee_name || "User"}
+                      className="w-12 h-12 rounded-full object-cover border border-gray-200 mr-3"
+                    />
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {review.mentee_name || "Anonymous"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(review.created_at)}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-gray-700">{review.feedback}</p>
+
+                  <div className="flex items-center gap-1 mb-2">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <span
+                        key={i}
+                        className={`text-lg ${
+                          i < review.rating
+                            ? "text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+
+                  <blockquote className="text-gray-700 italic relative">
+                    “{review.feedback}”
+                  </blockquote>
                 </div>
               ))}
             </div>

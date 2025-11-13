@@ -57,24 +57,21 @@ def create_review():
 
 
 @reviews_bp.route('/mentor/<mentor_id>', methods=['GET'])
-def get_mentor_reviews(mentor_id):
+def get_reviews_by_mentor(mentor_id):
     try:
-        result = supabase.table('reviews').select('*').eq('mentor_id', mentor_id).order('created_at', desc=True).execute()
-        
-        # Calculate average rating
-        reviews = result.data
-        if reviews:
-            avg_rating = sum(r['rating'] for r in reviews) / len(reviews)
-        else:
-            avg_rating = 0
-        
-        return jsonify({
-            'reviews': reviews,
-            'average_rating': round(avg_rating, 1),
-            'total_reviews': len(reviews)
-        }), 200
+        # Fetch reviews and include mentee (user) details in one query
+        result = supabase.table("reviews").select(
+            "id, rating, feedback, created_at, mentee_id, users:mentee_id(id, name, email, profile_pic_url)"
+        ).eq("mentor_id", mentor_id).execute()
+
+        if not result.data:
+            return jsonify([]), 200
+
+        return jsonify(result.data), 200
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print("Error fetching reviews:", e)
+        return jsonify({"error": str(e)}), 500
 
 @reviews_bp.route('/mentor/<mentor_id>/stats', methods=['GET'])
 def get_mentor_review_stats(mentor_id):
