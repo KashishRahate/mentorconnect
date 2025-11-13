@@ -535,6 +535,10 @@ const MenteeDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchBookings();
+
+    // 🔁 Auto-refresh every 15 seconds
+    const interval = setInterval(fetchBookings, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchBookings = async () => {
@@ -544,7 +548,9 @@ const MenteeDashboard: React.FC = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await response.json();
-      setBookings(data);
+
+      // ✅ Ensure we got valid data
+      if (Array.isArray(data)) setBookings(data);
     } catch (error) {
       console.error("Failed to fetch bookings:", error);
     } finally {
@@ -552,23 +558,30 @@ const MenteeDashboard: React.FC = () => {
     }
   };
 
+  // ✅ Show all sessions when date not selected
   const filteredBookings = selectedDate
     ? bookings.filter((b) => b.booking_date === selectedDate)
-    : bookings.filter(
-        (b) => b.status === "confirmed" || b.status === "pending"
-      );
+    : bookings;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Mentee Dashboard</h1>
-          <Link
-            to="/mentors"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg"
-          >
-            Find Mentors
-          </Link>
+          <div className="flex gap-3">
+            <button
+              onClick={fetchBookings}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg"
+            >
+              Refresh
+            </button>
+            <Link
+              to="/mentors"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg"
+            >
+              Find Mentors
+            </Link>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -635,6 +648,8 @@ const MenteeDashboard: React.FC = () => {
                             ? "bg-green-100 text-green-800"
                             : booking.status === "pending"
                             ? "bg-yellow-100 text-yellow-800"
+                            : booking.status === "completed"
+                            ? "bg-blue-100 text-blue-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >

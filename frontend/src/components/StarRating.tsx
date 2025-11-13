@@ -1,20 +1,25 @@
-"use client"
+"use client";
 
-import type React from "react"
+import React, { useState, useEffect, useContext } from "react";
 
 interface StarRatingProps {
-  rating: number
-  onRatingChange?: (rating: number) => void
-  readOnly?: boolean
-  size?: "sm" | "md" | "lg"
+  rating: number;
+  onRatingChange?: (rating: number) => void;
+  readOnly?: boolean;
+  size?: "sm" | "md" | "lg";
 }
 
-const StarRating: React.FC<StarRatingProps> = ({ rating, onRatingChange, readOnly = false, size = "md" }) => {
+const StarRating: React.FC<StarRatingProps> = ({
+  rating,
+  onRatingChange,
+  readOnly = false,
+  size = "md",
+}) => {
   const sizeClasses = {
     sm: "text-lg",
     md: "text-2xl",
     lg: "text-4xl",
-  }
+  };
 
   return (
     <div className="flex gap-1">
@@ -32,7 +37,7 @@ const StarRating: React.FC<StarRatingProps> = ({ rating, onRatingChange, readOnl
         </button>
       ))}
     </div>
-  )
-}
+  );
+};
 
-export default StarRating
+export default StarRating;

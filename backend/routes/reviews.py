@@ -12,18 +12,33 @@ supabase = get_supabase_client()
 def create_review():
     user_id = request.user_id
     data = request.get_json()
-    
+
     if not data or not data.get('mentor_id') or not data.get('booking_id') or not data.get('rating'):
         return jsonify({'error': 'Missing required fields'}), 400
-    
+
     if data['rating'] < 1 or data['rating'] > 5:
         return jsonify({'error': 'Rating must be between 1 and 5'}), 400
-    
-    # Check if review already exists for this booking
+
+    # ✅ Verify booking exists and belongs to the mentee
+    booking_res = supabase.table('bookings').select('*').eq('id', data['booking_id']).execute()
+    if not booking_res.data:
+        return jsonify({'error': 'Booking not found'}), 404
+
+    booking = booking_res.data[0]
+
+    # ✅ Ensure only mentee who booked can review
+    if booking['mentee_id'] != user_id:
+        return jsonify({'error': 'You are not authorized to review this booking'}), 403
+
+    # ✅ Ensure the session is completed
+    if booking['status'] != 'completed':
+        return jsonify({'error': 'You can only leave a review after the session is completed'}), 400
+
+    # ✅ Prevent duplicate reviews
     existing = supabase.table('reviews').select('id').eq('booking_id', data['booking_id']).execute()
     if existing.data:
         return jsonify({'error': 'Review already exists for this booking'}), 409
-    
+
     review_data = {
         'id': str(uuid.uuid4()),
         'mentee_id': user_id,
@@ -33,12 +48,13 @@ def create_review():
         'feedback': data.get('feedback', ''),
         'created_at': datetime.utcnow().isoformat()
     }
-    
+
     try:
         result = supabase.table('reviews').insert(review_data).execute()
         return jsonify({'message': 'Review created successfully', 'review': result.data[0]}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @reviews_bp.route('/mentor/<mentor_id>', methods=['GET'])
 def get_mentor_reviews(mentor_id):

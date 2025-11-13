@@ -823,6 +823,161 @@
 
 // export default SessionPage;
 
+// "use client";
+
+// import React, { useState, useEffect } from "react";
+// import { useParams, useNavigate } from "react-router-dom";
+// import { useAuth } from "../context/AuthContext";
+// import JitsiMeeting from "../components/JitsiMeeting";
+
+// interface BookingInfo {
+//   id: string;
+//   mentor_id: string;
+//   mentee_id: string;
+//   booking_date: string;
+//   booking_time: string;
+//   jitsi_room_id: string;
+//   status: string;
+//   notes: string;
+// }
+
+// const SessionPage: React.FC = () => {
+//   const { bookingId } = useParams<{ bookingId: string }>();
+//   const { user, token } = useAuth();
+//   const navigate = useNavigate();
+//   const [booking, setBooking] = useState<BookingInfo | null>(null);
+//   const [loading, setLoading] = useState(true);
+//   const [sessionActive, setSessionActive] = useState(false);
+//   const [showEndConfirm, setShowEndConfirm] = useState(false);
+//   const [error, setError] = useState("");
+
+//   useEffect(() => {
+//     fetchBooking();
+//   }, [bookingId]);
+
+//   const fetchBooking = async () => {
+//     try {
+//       const response = await fetch(
+//         `http://localhost:5000/api/bookings/${bookingId}`,
+//         {
+//           headers: { Authorization: `Bearer ${token}` },
+//         }
+//       );
+//       if (!response.ok) throw new Error("Failed to fetch booking");
+//       const data = await response.json();
+//       setBooking(data);
+//     } catch (err) {
+//       setError("Unable to load booking details.");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const handleEndSession = async () => {
+//     if (!booking) return;
+//     try {
+//       await fetch(`http://localhost:5000/api/bookings/${booking.id}`, {
+//         method: "PUT",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${token}`,
+//         },
+//         body: JSON.stringify({ status: "completed" }),
+//       });
+//       setSessionActive(false);
+//       navigate("/mentor/dashboard");
+//     } catch {
+//       setError("Failed to end session");
+//     }
+//   };
+
+//   if (loading)
+//     return (
+//       <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+//         Loading session...
+//       </div>
+//     );
+
+//   if (error)
+//     return (
+//       <div className="min-h-screen bg-gray-900 flex items-center justify-center text-red-400">
+//         {error}
+//       </div>
+//     );
+
+//   if (!booking)
+//     return (
+//       <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
+//         Booking not found
+//       </div>
+//     );
+
+//   return (
+//     <div className="min-h-screen bg-gray-900 flex flex-col">
+//       {/* Header */}
+//       <div className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
+//         <div>
+//           <h1 className="text-white text-xl font-semibold">
+//             Video Session {user?.id === booking.mentor_id ? "(Moderator)" : ""}
+//           </h1>
+//           <p className="text-gray-400 text-sm mt-1">
+//             {new Date(booking.booking_date).toLocaleDateString()} at{" "}
+//             {booking.booking_time}
+//           </p>
+//         </div>
+//         {sessionActive && (
+//           <button
+//             onClick={() => setShowEndConfirm(true)}
+//             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+//           >
+//             End Session
+//           </button>
+//         )}
+//       </div>
+
+//       {/* Video Meeting */}
+//       <div className="flex-1">
+//         <JitsiMeeting
+//           roomName={booking.jitsi_room_id}
+//           userName={user?.name || "User"}
+//           userEmail={user?.email || ""}
+//           isModerator={user?.id === booking.mentor_id}
+//           onConferenceJoined={() => setSessionActive(true)}
+//           onConferenceLeft={() => setSessionActive(false)}
+//         />
+//       </div>
+
+//       {/* Confirm End */}
+//       {showEndConfirm && (
+//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+//           <div className="bg-white rounded-lg p-6 max-w-sm">
+//             <h2 className="text-lg font-bold mb-4">End Session?</h2>
+//             <p className="text-gray-600 mb-6">
+//               Are you sure you want to end this session?
+//             </p>
+//             <div className="flex gap-4">
+//               <button
+//                 onClick={() => setShowEndConfirm(false)}
+//                 className="flex-1 bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-lg"
+//               >
+//                 Cancel
+//               </button>
+//               <button
+//                 onClick={handleEndSession}
+//                 className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+//               >
+//                 End Session
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default SessionPage;
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -847,22 +1002,19 @@ const SessionPage: React.FC = () => {
   const navigate = useNavigate();
   const [booking, setBooking] = useState<BookingInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sessionActive, setSessionActive] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [error, setError] = useState("");
+  const [sessionActive, setSessionActive] = useState(false);
 
   useEffect(() => {
-    fetchBooking();
+    if (bookingId) fetchBooking(bookingId);
   }, [bookingId]);
 
-  const fetchBooking = async () => {
+  const fetchBooking = async (id: string) => {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/bookings/${bookingId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await fetch(`http://localhost:5000/api/bookings/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Failed to fetch booking");
       const data = await response.json();
       setBooking(data);
@@ -884,9 +1036,8 @@ const SessionPage: React.FC = () => {
         },
         body: JSON.stringify({ status: "completed" }),
       });
-      setSessionActive(false);
       navigate("/mentor/dashboard");
-    } catch {
+    } catch (err) {
       setError("Failed to end session");
     }
   };
@@ -912,20 +1063,24 @@ const SessionPage: React.FC = () => {
       </div>
     );
 
+  const isMentor = user?.id === booking.mentor_id;
+
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
         <div>
           <h1 className="text-white text-xl font-semibold">
-            Video Session {user?.id === booking.mentor_id ? "(Moderator)" : ""}
+            Video Session {isMentor ? "(Moderator)" : ""}
           </h1>
           <p className="text-gray-400 text-sm mt-1">
             {new Date(booking.booking_date).toLocaleDateString()} at{" "}
             {booking.booking_time}
           </p>
         </div>
-        {sessionActive && (
+
+        {/* ✅ Mentor always sees End Session button */}
+        {isMentor && (
           <button
             onClick={() => setShowEndConfirm(true)}
             className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
@@ -941,19 +1096,20 @@ const SessionPage: React.FC = () => {
           roomName={booking.jitsi_room_id}
           userName={user?.name || "User"}
           userEmail={user?.email || ""}
-          isModerator={user?.id === booking.mentor_id}
+          isModerator={isMentor}
           onConferenceJoined={() => setSessionActive(true)}
           onConferenceLeft={() => setSessionActive(false)}
         />
       </div>
 
-      {/* Confirm End */}
+      {/* Confirm End Modal */}
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 max-w-sm">
             <h2 className="text-lg font-bold mb-4">End Session?</h2>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to end this session?
+              Are you sure you want to end this session? This will mark it as
+              completed for both mentor and mentee.
             </p>
             <div className="flex gap-4">
               <button
