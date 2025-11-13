@@ -1042,6 +1042,137 @@
 
 // export default JitsiMeeting;
 
+// "use client";
+
+// import React, { useEffect, useRef, useState } from "react";
+
+// interface JitsiMeetingProps {
+//   roomName: string;
+//   userName: string;
+//   userEmail: string;
+//   isModerator?: boolean; // ✅ Mentor = moderator
+//   onReady?: () => void;
+//   onConferenceJoined?: () => void;
+//   onConferenceLeft?: () => void;
+// }
+
+// declare global {
+//   interface Window {
+//     JitsiMeetExternalAPI: any;
+//   }
+// }
+
+// const JitsiMeeting: React.FC<JitsiMeetingProps> = ({
+//   roomName,
+//   userName,
+//   userEmail,
+//   isModerator = false,
+//   onReady,
+//   onConferenceJoined,
+//   onConferenceLeft,
+// }) => {
+//   const containerRef = useRef<HTMLDivElement>(null);
+//   const jitsiApiRef = useRef<any>(null);
+//   const [isLoading, setIsLoading] = useState(true);
+
+//   useEffect(() => {
+//     const script = document.createElement("script");
+//     script.src = "https://meet.jit.si/external_api.js";
+//     script.async = true;
+//     script.onload = () => {
+//       console.log("✅ Jitsi API loaded");
+//       if (onReady) onReady();
+//       initializeJitsi();
+//     };
+//     script.onerror = () => {
+//       console.error("❌ Failed to load Jitsi API script");
+//       setIsLoading(false);
+//     };
+//     document.body.appendChild(script);
+
+//     return () => {
+//       if (jitsiApiRef.current) {
+//         jitsiApiRef.current.dispose();
+//         jitsiApiRef.current = null;
+//       }
+//     };
+//   }, [roomName]);
+
+//   const initializeJitsi = () => {
+//     if (
+//       !containerRef.current ||
+//       typeof window.JitsiMeetExternalAPI === "undefined"
+//     ) {
+//       console.warn("⚠️ Waiting for Jitsi API...");
+//       setTimeout(initializeJitsi, 1000);
+//       return;
+//     }
+
+//     const domain = "meet.jit.si";
+//     const options = {
+//       roomName,
+//       width: "100%",
+//       height: "100%",
+//       parentNode: containerRef.current,
+//       userInfo: {
+//         displayName: userName || "User",
+//         email: userEmail || "",
+//       },
+//       configOverwrite: {
+//         prejoinPageEnabled: false,
+//         startWithAudioMuted: false,
+//         startWithVideoMuted: false,
+//         enableWelcomePage: false,
+//         disableModeratorIndicator: !isModerator, // ✅ Only mentor = moderator
+//       },
+//       interfaceConfigOverwrite: {
+//         SHOW_JITSI_WATERMARK: false,
+//         SHOW_BRAND_WATERMARK: false,
+//         MOBILE_APP_PROMO: false,
+//       },
+//     };
+
+//     try {
+//       jitsiApiRef.current = new window.JitsiMeetExternalAPI(domain, options);
+
+//       if (isModerator) {
+//         // ✅ Make mentor moderator
+//         jitsiApiRef.current.executeCommand("toggleLobby", false);
+//       }
+
+//       jitsiApiRef.current.addEventListener("videoConferenceJoined", () => {
+//         console.log("✅ Joined room:", roomName);
+//         setIsLoading(false);
+//         if (onConferenceJoined) onConferenceJoined();
+//       });
+
+//       jitsiApiRef.current.addEventListener("videoConferenceLeft", () => {
+//         console.log("👋 Left room");
+//         if (onConferenceLeft) onConferenceLeft();
+//       });
+//     } catch (err) {
+//       console.error("❌ Failed to init Jitsi:", err);
+//       setIsLoading(false);
+//     }
+//   };
+
+//   return (
+//     <div className="relative w-full h-[80vh] bg-black rounded-lg overflow-hidden">
+//       {isLoading && (
+//         <div className="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center z-50">
+//           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+//           <p className="text-white text-lg">
+//             Connecting to video conference...
+//           </p>
+//         </div>
+//       )}
+//       <div ref={containerRef} className="w-full h-full" />
+//     </div>
+//   );
+// };
+
+// export default JitsiMeeting;
+
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -1050,7 +1181,7 @@ interface JitsiMeetingProps {
   roomName: string;
   userName: string;
   userEmail: string;
-  isModerator?: boolean; // ✅ Mentor = moderator
+  isModerator?: boolean;
   onReady?: () => void;
   onConferenceJoined?: () => void;
   onConferenceLeft?: () => void;
@@ -1076,19 +1207,21 @@ const JitsiMeeting: React.FC<JitsiMeetingProps> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://meet.jit.si/external_api.js";
-    script.async = true;
-    script.onload = () => {
-      console.log("✅ Jitsi API loaded");
-      if (onReady) onReady();
+    const existingScript = document.getElementById("jitsi-script");
+    if (existingScript && window.JitsiMeetExternalAPI) {
       initializeJitsi();
-    };
-    script.onerror = () => {
-      console.error("❌ Failed to load Jitsi API script");
-      setIsLoading(false);
-    };
-    document.body.appendChild(script);
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://meet.jit.si/external_api.js";
+      script.async = true;
+      script.id = "jitsi-script";
+      script.onload = initializeJitsi;
+      script.onerror = () => {
+        console.error("❌ Failed to load Jitsi API script");
+        setIsLoading(false);
+      };
+      document.body.appendChild(script);
+    }
 
     return () => {
       if (jitsiApiRef.current) {
@@ -1099,14 +1232,14 @@ const JitsiMeeting: React.FC<JitsiMeetingProps> = ({
   }, [roomName]);
 
   const initializeJitsi = () => {
-    if (
-      !containerRef.current ||
-      typeof window.JitsiMeetExternalAPI === "undefined"
-    ) {
+    if (!containerRef.current || !window.JitsiMeetExternalAPI) {
       console.warn("⚠️ Waiting for Jitsi API...");
-      setTimeout(initializeJitsi, 1000);
+      setTimeout(initializeJitsi, 500);
       return;
     }
+
+    // Prevent reinit
+    if (jitsiApiRef.current) return;
 
     const domain = "meet.jit.si";
     const options = {
@@ -1119,34 +1252,37 @@ const JitsiMeeting: React.FC<JitsiMeetingProps> = ({
         email: userEmail || "",
       },
       configOverwrite: {
-        prejoinPageEnabled: false,
+        prejoinPageEnabled: true, // ✅ Allow join screen to appear
         startWithAudioMuted: false,
         startWithVideoMuted: false,
         enableWelcomePage: false,
-        disableModeratorIndicator: !isModerator, // ✅ Only mentor = moderator
       },
       interfaceConfigOverwrite: {
         SHOW_JITSI_WATERMARK: false,
         SHOW_BRAND_WATERMARK: false,
         MOBILE_APP_PROMO: false,
+        TOOLBAR_ALWAYS_VISIBLE: true,
+        FILM_STRIP_MAX_HEIGHT: 120,
       },
     };
 
     try {
-      jitsiApiRef.current = new window.JitsiMeetExternalAPI(domain, options);
+      const api = new window.JitsiMeetExternalAPI(domain, options);
+      jitsiApiRef.current = api;
 
-      if (isModerator) {
-        // ✅ Make mentor moderator
-        jitsiApiRef.current.executeCommand("toggleLobby", false);
-      }
+      if (isModerator) api.executeCommand("toggleLobby", false);
 
-      jitsiApiRef.current.addEventListener("videoConferenceJoined", () => {
-        console.log("✅ Joined room:", roomName);
+      api.addEventListener("videoConferenceJoined", () => {
+        console.log("✅ Joined meeting:", roomName);
         setIsLoading(false);
+        api.executeCommand("setTileView", true);
         if (onConferenceJoined) onConferenceJoined();
       });
 
-      jitsiApiRef.current.addEventListener("videoConferenceLeft", () => {
+      // Hide overlay if Jitsi prejoin appears
+      setTimeout(() => setIsLoading(false), 1500);
+
+      api.addEventListener("videoConferenceLeft", () => {
         console.log("👋 Left room");
         if (onConferenceLeft) onConferenceLeft();
       });
@@ -1157,12 +1293,12 @@ const JitsiMeeting: React.FC<JitsiMeetingProps> = ({
   };
 
   return (
-    <div className="relative w-full h-[80vh] bg-black rounded-lg overflow-hidden">
+    <div className="relative w-full h-[80vh] bg-black rounded-lg overflow-hidden border border-gray-700 shadow-lg">
       {isLoading && (
-        <div className="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center z-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
-          <p className="text-white text-lg">
-            Connecting to video conference...
+        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-50 pointer-events-none transition-opacity duration-500">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400 mb-4"></div>
+          <p className="text-gray-300 text-lg font-medium">
+            Connecting to your meeting...
           </p>
         </div>
       )}
